@@ -1,4 +1,5 @@
 var ethers = require('ethers');  
+var fs = require('fs');
 var arbitrum_rpc = 'https://arb1.arbitrum.io/rpc';
 var optimism_rpc = 'https://rpc.ankr.com/optimism';
 
@@ -20,7 +21,7 @@ const revenueContract = new ethers.Contract(revenueContractAddress, revenueContr
 const WEEK = 604800;
 const currentTime = Math.round(new Date().getTime() / 1000);
 
-let last_epoch_end_time = Math.floor((currentTime-2*WEEK) / WEEK) * WEEK; // subtracting two weeks temporarily to get to a useful epoch
+let last_epoch_end_time = Math.floor((currentTime) / WEEK) * WEEK; 
 
 console.log("Last Epoch timestamp: ",last_epoch_end_time);
 console.log("Last Epoch end time: ",new Date(last_epoch_end_time*1000).toLocaleDateString("en-US", { timeZone: 'UTC' }),new Date(last_epoch_end_time*1000).toLocaleTimeString("en-US", { timeZone: 'UTC' }));
@@ -29,44 +30,63 @@ var totalSupply = 0;
 var tokenOwners = [];
 var tokens_in_epoch;
 var ve_supply;
+var txList = [['token_type,token_address,receiver,amount,id']];
 
 async function loadHolders(){
     // read method
     await NFTcontract.totalSupply()
-    .then((uri) => 
-        console.log("Total NFT Supply: ",totalSupply = uri.toNumber())
+    .then((output) => 
+        console.log("Total NFT Supply: ",totalSupply = output.toNumber())
     );
 
     await revenueContract.ve_supply(last_epoch_end_time)
-    .then((uri) => 
-        console.log("ve supply: ",ve_supply = ethers.utils.formatEther(uri))
+    .then((output) => 
+        console.log("ve supply: ",ve_supply = ethers.utils.formatEther(output))
     );
 
     await revenueContract.tokens_per_week(last_epoch_end_time)
-    .then((uri) => 
-        console.log("ETH in last Epoch: ",tokens_in_epoch = ethers.utils.formatEther(uri))
+    .then((output) => 
+        console.log("ETH in last Epoch: ",tokens_in_epoch = ethers.utils.formatEther(output))
     );
     
 
     i = 1;
     while(i<=totalSupply){
         console.log("Checking token ID",i);
-        await NFTcontract.ownerOf(i).then((address) => tokenOwners.push(address));
-        console.log("Owner: ",tokenOwners[i-1]);
+        let tokenOwner;
+        await NFTcontract.ownerOf(i).then((address) => tokenOwner = address);
 
-        let ve_for_at;
-        
-        await revenueContract.ve_for_at(ethers.utils.getAddress(tokenOwners[i-1]),last_epoch_end_time)
-        .then((balance) => console.log("xL2DAO Balance: ",ve_for_at = ethers.utils.formatEther(balance)));
-
-        let ve_share = ve_for_at / ve_supply;
-        let eth_share = ve_share * tokens_in_epoch;
-
-        console.log("Percentage share of weekly pool: ",ve_share);
-        console.log("Allocated ETH: ",eth_share);
-
+        if ( ! tokenOwners.includes(tokenOwner) ) {
+            tokenOwners.push(tokenOwner)
+            console.log("Owner: ",tokenOwner);
+    
+            let ve_for_at;
+    
+            await revenueContract.ve_for_at(ethers.utils.getAddress(tokenOwner),last_epoch_end_time)
+            .then((balance) => console.log("xL2DAO Balance: ",ve_for_at = ethers.utils.formatEther(balance)));
+    
+            if ( ve_for_at > 0 ) {
+                let ve_share = ve_for_at / ve_supply;
+                let eth_share = ve_share * tokens_in_epoch;
+    
+                console.log("Percentage share of weekly pool: ",ve_share*100);
+                console.log("----> Owner will receive rev share");
+                console.log("Allocated ETH: ",Number(eth_share).toFixed(18));
+    
+                txList.push(['erc20','',tokenOwner,Number(eth_share).toFixed(18),'']);
+            }
+        }
         i++;
     }
+    console.log(txList);
+    let csv = txList.join('\n');
+    fs.writeFile('txList'+last_epoch_end_time+'.csv', csv, 'utf8', function(err) {
+        if (err) {
+          console.log('Some error occured - file either not saved or corrupted file saved.');
+        } else {
+          console.log('It\'s saved!');
+        }
+    });
 }
 
 loadHolders();
