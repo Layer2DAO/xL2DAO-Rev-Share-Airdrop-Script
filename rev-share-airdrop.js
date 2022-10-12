@@ -80,7 +80,7 @@ async function loadHolders(){
     }
     console.log(txList);
     let csv = txList.join('\n');
-    fs.writeFile('txList'+last_epoch_end_time+'.csv', csv, 'utf8', function(err) {
+    fs.writeFile('./airdrop_data/txList'+last_epoch_end_time+'.csv', csv, 'utf8', function(err) {
         if (err) {
           console.log('Some error occured - file either not saved or corrupted file saved.');
         } else {
