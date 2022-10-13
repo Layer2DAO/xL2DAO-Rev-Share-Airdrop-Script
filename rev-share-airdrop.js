@@ -21,10 +21,10 @@ const revenueContract = new ethers.Contract(revenueContractAddress, revenueContr
 const WEEK = 604800;
 const currentTime = Math.round(new Date().getTime() / 1000);
 
-let last_epoch_end_time = Math.floor((currentTime) / WEEK) * WEEK; 
+let last_epoch_start_time = Math.floor((currentTime-WEEK) / WEEK) * WEEK; 
 
-console.log("Last Epoch timestamp: ",last_epoch_end_time);
-console.log("Last Epoch end time: ",new Date(last_epoch_end_time*1000).toLocaleDateString("en-US", { timeZone: 'UTC' }),new Date(last_epoch_end_time*1000).toLocaleTimeString("en-US", { timeZone: 'UTC' }));
+console.log("Last Epoch timestamp: ",last_epoch_start_time);
+console.log("Last Epoch start time: ",new Date(last_epoch_start_time*1000).toLocaleDateString("en-US", { timeZone: 'UTC' }),new Date(last_epoch_start_time*1000).toLocaleTimeString("en-US", { timeZone: 'UTC' }));
 
 var totalSupply = 0;
 var tokenOwners = [];
@@ -39,12 +39,12 @@ async function loadHolders(){
         console.log("Total NFT Supply: ",totalSupply = output.toNumber())
     );
 
-    await revenueContract.ve_supply(last_epoch_end_time)
+    await revenueContract.ve_supply(last_epoch_start_time)
     .then((output) => 
         console.log("ve supply: ",ve_supply = ethers.utils.formatEther(output))
     );
 
-    await revenueContract.tokens_per_week(last_epoch_end_time)
+    await revenueContract.tokens_per_week(last_epoch_start_time)
     .then((output) => 
         console.log("ETH in last Epoch: ",tokens_in_epoch = ethers.utils.formatEther(output))
     );
@@ -62,7 +62,7 @@ async function loadHolders(){
     
             let ve_for_at;
     
-            await revenueContract.ve_for_at(ethers.utils.getAddress(tokenOwner),last_epoch_end_time)
+            await revenueContract.ve_for_at(ethers.utils.getAddress(tokenOwner),last_epoch_start_time)
             .then((balance) => console.log("xL2DAO Balance: ",ve_for_at = ethers.utils.formatEther(balance)));
     
             if ( ve_for_at > 0 ) {
@@ -80,7 +80,7 @@ async function loadHolders(){
     }
     console.log(txList);
     let csv = txList.join('\n');
-    fs.writeFile('./airdrop_data/txList'+last_epoch_end_time+'.csv', csv, 'utf8', function(err) {
+    fs.writeFile('./airdrop_data/txList'+last_epoch_start_time+'.csv', csv, 'utf8', function(err) {
         if (err) {
           console.log('Some error occured - file either not saved or corrupted file saved.');
         } else {
