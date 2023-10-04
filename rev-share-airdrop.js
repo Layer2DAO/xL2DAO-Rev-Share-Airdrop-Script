@@ -1,7 +1,7 @@
 var ethers = require('ethers');  
 var fs = require('fs');
-var arbitrum_rpc = 'https://arb1.arbitrum.io/rpc';
-var optimism_rpc = 'https://rpc.ankr.com/optimism';
+var arbitrum_rpc = 'https://arbitrum.llamarpc.com';
+var optimism_rpc = 'https://optimism.llamarpc.com';
 
 var customHttpProviderOptimism = new ethers.providers.JsonRpcProvider(optimism_rpc);
 var customHttpProviderArbitrum = new ethers.providers.JsonRpcProvider(arbitrum_rpc);
@@ -54,7 +54,19 @@ async function loadHolders(){
     while(i<=totalSupply){
         console.log("Checking token ID",i);
         let tokenOwner;
-        await NFTcontract.ownerOf(i).then((address) => tokenOwner = address);
+
+        let numTries;
+        while (true) {
+            numTries = 5;
+            try {
+                await NFTcontract.ownerOf(i).then((address) => tokenOwner = address);
+                break;
+            } catch (error) {
+                console.log("ERROR -- RETRYING");
+                if (--numTries < 1) throw(error);
+            }
+        }
+        
 
         if ( ! tokenOwners.includes(tokenOwner) ) {
             tokenOwners.push(tokenOwner)
@@ -62,8 +74,17 @@ async function loadHolders(){
     
             let ve_for_at;
     
-            await revenueContract.ve_for_at(ethers.utils.getAddress(tokenOwner),last_epoch_start_time)
-            .then((balance) => console.log("xL2DAO Balance: ",ve_for_at = ethers.utils.formatEther(balance)));
+            while (true) {
+                numTries = 5;
+                try{
+                    await revenueContract.ve_for_at(ethers.utils.getAddress(tokenOwner),last_epoch_start_time)
+                    .then((balance) => console.log("xL2DAO Balance: ",ve_for_at = ethers.utils.formatEther(balance)));
+                    break;
+                } catch (error) {
+                    console.log("ERROR -- RETRYING");
+                    if (--numTries < 1) throw(error);
+                }
+            }
     
             if ( ve_for_at > 0 ) {
                 let ve_share = ve_for_at / ve_supply;
